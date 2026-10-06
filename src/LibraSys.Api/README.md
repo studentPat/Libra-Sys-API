@@ -40,6 +40,22 @@ The first ASP.NET 8 backend slice provides:
 - `POST /api/librarian/reservations/expire-due`
 - `GET /api/librarian/reservations?status=&page=1&pageSize=20`
 
+## Web application
+
+The API also serves a same-origin vanilla HTML/CSS/JavaScript application from
+`/`. It has role-specific workflows instead of exposing a separate frontend
+server:
+
+- Guests can search the catalog and inspect book details.
+- Members can sign in, update their profile, borrow and return copies, manage
+  their own reservations, and view their own borrowing, fine, and payment
+  history.
+- Librarians can create/update books, add/retire copies, manage member
+  profiles/statuses and histories, create fines, record payments, process the
+  reservation lifecycle, and use all operational/audit reports.
+- The DBA view keeps administration separate from library operations and links
+  to the documented local database evidence workflow.
+
 Login failures are tracked per active user. After five failed attempts, the
 account is locked for 15 minutes and successful login resets the counter.
 
