@@ -53,16 +53,20 @@ Open the displayed URL. Check `GET /api/health` first, then open `/swagger`.
 1. At `/`, search the catalog and open a book detail page.
 2. Sign in as a seeded **Member**. Confirm profile, borrowings, reservations,
    fines, and payments load.
-3. Update the member profile and confirm the success message.
-4. Reserve a catalog book, confirm it appears under Reservations, then cancel
+3. From the guest navigation, register a new Member using a unique username and
+   email plus a password of at least 12 characters; then sign in with that new
+   account. Repeating the same username or email must show a conflict instead
+   of creating a duplicate user.
+4. Update the member profile and confirm the success message.
+5. Reserve a catalog book, confirm it appears under Reservations, then cancel
    it. Attempt a duplicate reservation and verify a conflict is shown.
-5. Borrow an available copy ID and verify it appears as active; return it with
+6. Borrow an available copy ID and verify it appears as active; return it with
    a condition and verify the status changes.
-6. Sign in as a seeded **Librarian**. Add a book and physical copy, search the
+7. Sign in as a seeded **Librarian**. Add a book and physical copy, search the
    member, record a permitted payment, and open each report.
-7. Verify a Member cannot open `#/librarian`, and a Librarian cannot call a
+8. Verify a Member cannot open `#/librarian`, and a Librarian cannot call a
    member endpoint with another member's token in Swagger.
-8. In Swagger, submit invalid IDs, a duplicate ISBN/accession number, a
+9. In Swagger, submit invalid IDs, a duplicate ISBN/accession number, a
    duplicate active borrowing/reservation, and an overpayment. Each should
    return a client error rather than a server error.
 
