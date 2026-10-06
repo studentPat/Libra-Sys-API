@@ -6,6 +6,7 @@ The first ASP.NET 8 backend slice provides:
 - `GET /api/catalog?search=&page=1&pageSize=20`
 - `GET /api/catalog/{bookId}`
 - `POST /api/auth/login`
+- `POST /api/auth/register`
 - `GET /api/auth/me`
 - `GET /api/member/profile`
 - `PUT /api/member/profile`
@@ -47,6 +48,8 @@ The API also serves a same-origin vanilla HTML/CSS/JavaScript application from
 server:
 
 - Guests can search the catalog and inspect book details.
+- Guests can register a standard Member account; the password is hashed before
+  the user/member records are written in one transaction.
 - Members can sign in, update their profile, borrow and return copies, manage
   their own reservations, and view their own borrowing, fine, and payment
   history.
