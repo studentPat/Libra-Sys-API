@@ -23,7 +23,7 @@ function renderNav() {
   if (role === 'Member') links.push('<a href="#/member">My account</a>');
   if (role === 'Librarian') links.push('<a href="#/librarian">Librarian workspace</a>');
   if (role === 'DBA') links.push('<a href="#/dba">DBA guide</a>');
-  if (!role) links.push('<a href="#/login">Sign in</a>');
+  if (!role) links.push('<a href="#/login">Sign in</a><a href="#/register">Register</a>');
   if (role) links.push(`<span class="identity">${esc(state.session.username)} · ${esc(role)}</span><button id="signout">Sign out</button>`);
   nav.innerHTML = links.join(''); document.querySelector('#signout')?.addEventListener('click', () => { saveSession(null); location.hash = '#/catalog'; });
 }
@@ -34,8 +34,8 @@ function table(rows, columns) {
 function bindForm(selector, handler) {
   document.querySelector(selector)?.addEventListener('submit', async event => {
     event.preventDefault(); const form = event.currentTarget; const message = form.querySelector('.form-message'); const button = form.querySelector('button[type="submit"]');
-    button.disabled = true; message.innerHTML = '';
-    try { await handler(Object.fromEntries(new FormData(form)), form); } catch (error) { message.innerHTML = notice(error.message, true); } finally { button.disabled = false; }
+    button.disabled = true; if (message) message.innerHTML = '';
+    try { await handler(Object.fromEntries(new FormData(form)), form); } catch (error) { if (message) message.innerHTML = notice(error.message, true); else alert(error.message); } finally { button.disabled = false; }
   });
 }
 const allowedConditions = ['new', 'good', 'fair', 'damaged'];
@@ -55,8 +55,19 @@ async function book(bookId) {
   } catch (e) { app.innerHTML = notice(e.message, true); }
 }
 function login() {
-  app.innerHTML = page('Sign in', '<section class="panel auth-panel"><form id="login-form" class="stack"><label>Username<input name="username" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="primary">Sign in</button><div class="form-message"></div></form></section>', 'Use your locally seeded Member, Librarian, or DBA account.');
+  app.innerHTML = page('Sign in', '<section class="panel auth-panel"><form id="login-form" class="stack"><label>Username<input name="username" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="primary">Sign in</button><div class="form-message"></div></form><p class="muted">Need a member account? <a href="#/register">Register here</a>.</p></section>', 'Use your locally seeded Member, Librarian, or DBA account.');
   bindForm('#login-form', async values => { const session = await api('/api/auth/login', { method: 'POST', body: JSON.stringify(values) }); saveSession(session); location.hash = session.role === 'Member' ? '#/member' : session.role === 'Librarian' ? '#/librarian' : '#/dba'; });
+}
+function register() {
+  if (state.session) { location.hash = '#/catalog'; return; }
+  app.innerHTML = page('Create a member account', '<section class="panel auth-panel"><form id="register-form" class="stack"><label>Username<input name="username" minlength="3" maxlength="80" autocomplete="username" required></label><label>First name<input name="firstName" maxlength="80" autocomplete="given-name" required></label><label>Last name<input name="lastName" maxlength="80" autocomplete="family-name" required></label><label>Email<input name="email" type="email" maxlength="255" autocomplete="email" required></label><label>Contact information (optional)<input name="contactInfo" maxlength="100" autocomplete="tel"></label><label>Password<input name="password" type="password" minlength="12" autocomplete="new-password" required></label><label>Confirm password<input name="confirmPassword" type="password" minlength="12" autocomplete="new-password" required></label><button type="submit" class="primary">Create account</button><div class="form-message"></div></form><p class="muted">Passwords are stored only as ASP.NET password hashes. Librarian and DBA roles are administered separately.</p></section>', 'Registration creates a standard Member account.');
+  bindForm('#register-form', async values => {
+    if (values.password !== values.confirmPassword) throw new Error('Passwords do not match.');
+    delete values.confirmPassword;
+    const result = await api('/api/auth/register', { method: 'POST', body: JSON.stringify(values) });
+    document.querySelector('#register-form .form-message').innerHTML = notice(`Account created for ${result.username}. You can now sign in.`);
+    document.querySelector('#register-form').reset();
+  });
 }
 async function member() {
   if (state.session?.role !== 'Member') return forbidden(); app.innerHTML = '<p class="loading">Loading your account…</p>';
@@ -126,5 +137,5 @@ async function loadReport(type) {
 }
 function dba() { if (state.session?.role !== 'DBA') return forbidden(); app.innerHTML = page('DBA guide', '<section class="panel"><h2>Database administration boundary</h2><p>Database administration is intentionally outside the normal library API. Use the controlled scripts in <code>database/</code> with a dedicated local DBA identity.</p><ul><li>Run the transaction, encryption, privilege, and optimization demonstrations separately.</li><li>Record evidence without including passwords, connection strings, or keys.</li><li>Use the restricted API account for application execution.</li></ul><p><a class="button-link" href="/swagger" target="_blank" rel="noopener">Open API reference</a></p></section>'); }
 function forbidden() { app.innerHTML = page('Access denied', notice('Your current role is not authorized to view this page.', true)); }
-function route() { const [root, id] = (location.hash.slice(2) || 'catalog').split('/'); renderNav(); if (root === 'catalog') return catalog(); if (root === 'book' && id) return book(id); if (root === 'login') return login(); if (root === 'member') return member(); if (root === 'librarian') return librarian(); if (root === 'dba') return dba(); location.hash = '#/catalog'; }
+function route() { const [root, id] = (location.hash.slice(2) || 'catalog').split('/'); renderNav(); if (root === 'catalog') return catalog(); if (root === 'book' && id) return book(id); if (root === 'login') return login(); if (root === 'register') return register(); if (root === 'member') return member(); if (root === 'librarian') return librarian(); if (root === 'dba') return dba(); location.hash = '#/catalog'; }
 window.addEventListener('hashchange', route); route();
