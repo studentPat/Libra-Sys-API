@@ -4,7 +4,7 @@ using MySqlConnector;
 
 namespace LibraSys.Api.Features.Members;
 
-public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
+public sealed class MemberRepository(IDbConnectionFactory connectionFactory, EncryptionService encryption)
 {
     public async Task<MemberProfile?> GetProfileAsync(
         long userId, CancellationToken cancellationToken)
@@ -14,8 +14,8 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
                    u.username AS Username,
                    m.first_name AS FirstName,
                    m.last_name AS LastName,
-                   m.email AS Email,
-                   m.contact_info AS ContactInfo,
+                   m.email_ciphertext AS EmailCiphertext,
+                   m.contact_info_ciphertext AS ContactInfoCiphertext,
                    m.member_status AS Status
             FROM members m
             INNER JOIN users u ON u.user_id = m.user_id
@@ -24,9 +24,15 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
 
         await using var connection = connectionFactory.CreateConnection();
         await connection.OpenAsync(cancellationToken);
-        return await connection.QuerySingleOrDefaultAsync<MemberProfile>(
+        var raw = await connection.QuerySingleOrDefaultAsync<RawMemberProfile>(
             new CommandDefinition(sql, new { UserId = userId },
                 cancellationToken: cancellationToken));
+        if (raw is null) return null;
+        return new MemberProfile(
+            raw.MemberId, raw.Username, raw.FirstName, raw.LastName,
+            encryption.Decrypt(raw.EmailCiphertext) ?? string.Empty,
+            encryption.Decrypt(raw.ContactInfoCiphertext),
+            raw.Status);
     }
 
     public async Task<IReadOnlyList<MemberBorrowing>> GetBorrowingsAsync(
@@ -65,8 +71,9 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
             UPDATE members
             SET first_name = @FirstName,
                 last_name = @LastName,
-                email = @Email,
-                contact_info = @ContactInfo
+                email_ciphertext = @EmailCiphertext,
+                email_fingerprint = @EmailFingerprint,
+                contact_info_ciphertext = @ContactInfoCiphertext
             WHERE user_id = @UserId
               AND member_status <> 'closed';
             """;
@@ -80,8 +87,9 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
                 UserId = userId,
                 request.FirstName,
                 request.LastName,
-                request.Email,
-                request.ContactInfo
+                EmailCiphertext = encryption.Encrypt(request.Email),
+                EmailFingerprint = encryption.Fingerprint(request.Email),
+                ContactInfoCiphertext = encryption.Encrypt(request.ContactInfo)
             },
             cancellationToken: cancellationToken));
         return affected > 0;
@@ -478,6 +486,12 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
                 cancellationToken: cancellationToken));
         return rows.AsList();
     }
+
+    // Dapper maps VARBINARY columns to byte[]. These private records hold the raw
+    // ciphertext so the repository can decrypt before returning domain types.
+    private sealed record RawMemberProfile(
+        long MemberId, string Username, string FirstName, string LastName,
+        byte[]? EmailCiphertext, byte[]? ContactInfoCiphertext, string Status);
 
     private sealed record ReturnBorrowing(long CopyId, string Status);
 }

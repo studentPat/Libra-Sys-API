@@ -32,8 +32,26 @@ INSERT INTO users (role_id, username, password_hash)
 SELECT role_id, 'demo_member', 'AQAAAAIAAYagAAAAEKTwOCBTgtNuwx5YI1IDOlDgUIFV0QjxYpeEBcbg2iSK9NRJTBZCJwR1C0hchkTWHw=='
 FROM roles WHERE role_name = 'Member';
 
-INSERT INTO members (user_id, first_name, last_name, email, contact_info)
-SELECT user_id, 'Demo', 'Member', 'demo.member@example.invalid', 'not-a-real-contact'
+-- IMPORTANT: Replace LOCAL_DEMO_KEY_REPLACE_ME with your actual Database:EncryptionKey value.
+-- This key MUST match the key configured in user-secrets/environment for the API.
+-- The AES key is derived as SHA256("aes:" + key) and HMAC key as SHA256("hmac:" + key),
+-- which mirrors the C# EncryptionService derivation.
+-- Never commit a real key to source control.
+SET @raw_key        = 'LOCAL_DEMO_KEY_REPLACE_ME';
+SET @aes_key        = UNHEX(SHA2(CONCAT('aes:', @raw_key), 256));
+SET @hmac_key       = UNHEX(SHA2(CONCAT('hmac:', @raw_key), 256));
+
+SET @demo_email     = 'demo.member@example.invalid';
+SET @demo_contact   = 'not-a-real-contact';
+
+INSERT INTO members (user_id, first_name, last_name,
+                     email_ciphertext, email_fingerprint,
+                     contact_info_ciphertext)
+SELECT user_id,
+       'Demo', 'Member',
+       AES_ENCRYPT(@demo_email,   @aes_key),
+       SHA2(LOWER(TRIM(@demo_email)), 256),
+       AES_ENCRYPT(@demo_contact, @aes_key)
 FROM users WHERE username = 'demo_member';
 
 INSERT INTO authors (name) VALUES

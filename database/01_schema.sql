@@ -65,9 +65,11 @@ CREATE TABLE members (
     user_id BIGINT UNSIGNED NOT NULL UNIQUE,
     first_name VARCHAR(80) NOT NULL,
     last_name VARCHAR(80) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    contact_info VARCHAR(100) NULL,
-    address_ciphertext VARBINARY(1024) NULL,
+    -- email and contact_info are stored encrypted; email_fingerprint is an HMAC
+    -- used only to enforce uniqueness without storing the plaintext in the DB.
+    email_ciphertext VARBINARY(512) NOT NULL,
+    email_fingerprint VARBINARY(32) NOT NULL UNIQUE,
+    contact_info_ciphertext VARBINARY(512) NULL,
     member_status ENUM('active', 'suspended', 'closed') NOT NULL DEFAULT 'active',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

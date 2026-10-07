@@ -4,7 +4,7 @@ using MySqlConnector;
 
 namespace LibraSys.Api.Features.Librarian;
 
-public sealed class MemberManagementRepository(IDbConnectionFactory connectionFactory)
+public sealed class MemberManagementRepository(IDbConnectionFactory connectionFactory, EncryptionService encryption)
 {
     public async Task<IReadOnlyList<LibrarianMemberFine>> GetFinesAsync(
         long memberId, CancellationToken cancellationToken)
@@ -94,20 +94,21 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
     public async Task<IReadOnlyList<LibrarianMember>> ListAsync(
         string? search, string? status, int page, int pageSize, CancellationToken cancellationToken)
     {
+        // NOTE: Search against first_name, last_name, and username only. Email search
+        // is not possible on encrypted data without a dedicated search index.
         const string sql = """
             SELECT CAST(m.member_id AS SIGNED) AS MemberId,
                    CAST(m.user_id AS SIGNED) AS UserId,
                    u.username AS Username,
                    m.first_name AS FirstName,
                    m.last_name AS LastName,
-                   m.email AS Email,
-                   m.contact_info AS ContactInfo,
+                   m.email_ciphertext AS EmailCiphertext,
+                   m.contact_info_ciphertext AS ContactInfoCiphertext,
                    m.member_status AS Status
             FROM members m
             INNER JOIN users u ON u.user_id = m.user_id
             WHERE (@Search IS NULL OR m.first_name LIKE CONCAT('%', @Search, '%')
                    OR m.last_name LIKE CONCAT('%', @Search, '%')
-                   OR m.email LIKE CONCAT('%', @Search, '%')
                    OR u.username LIKE CONCAT('%', @Search, '%'))
               AND (@Status IS NULL OR m.member_status = @Status)
             ORDER BY m.last_name, m.first_name, m.member_id
@@ -116,7 +117,7 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
 
         await using var connection = connectionFactory.CreateConnection();
         await connection.OpenAsync(cancellationToken);
-        var rows = await connection.QueryAsync<LibrarianMember>(new CommandDefinition(
+        var rows = await connection.QueryAsync<RawLibrarianMember>(new CommandDefinition(
             sql,
             new
             {
@@ -126,7 +127,11 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
                 Offset = (page - 1) * pageSize
             },
             cancellationToken: cancellationToken));
-        return rows.AsList();
+        return rows.Select(r => new LibrarianMember(
+            r.MemberId, r.UserId, r.Username, r.FirstName, r.LastName,
+            encryption.Decrypt(r.EmailCiphertext) ?? string.Empty,
+            encryption.Decrypt(r.ContactInfoCiphertext),
+            r.Status)).ToList();
     }
 
     public async Task<MemberManagementResult?> UpdateStatusAsync(
@@ -185,8 +190,9 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
                 UPDATE members
                 SET first_name = @FirstName,
                     last_name = @LastName,
-                    email = @Email,
-                    contact_info = @ContactInfo
+                    email_ciphertext = @EmailCiphertext,
+                    email_fingerprint = @EmailFingerprint,
+                    contact_info_ciphertext = @ContactInfoCiphertext
                 WHERE member_id = @MemberId;
                 """;
             var affected = await connection.ExecuteAsync(new CommandDefinition(updateSql,
@@ -195,8 +201,9 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
                     MemberId = memberId,
                     request.FirstName,
                     request.LastName,
-                    request.Email,
-                    request.ContactInfo
+                    EmailCiphertext = encryption.Encrypt(request.Email),
+                    EmailFingerprint = encryption.Fingerprint(request.Email),
+                    ContactInfoCiphertext = encryption.Encrypt(request.ContactInfo)
                 },
                 transaction: transaction, cancellationToken: cancellationToken));
             if (affected == 0)
@@ -209,10 +216,10 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
                 INSERT INTO transaction_logs
                     (user_id, action, entity_type, entity_id, details)
                 VALUES (@UserId, 'update_member', 'member', @MemberId,
-                        JSON_OBJECT('email', @Email));
+                        JSON_OBJECT('action', 'profile_updated'));
                 """;
             await connection.ExecuteAsync(new CommandDefinition(logSql,
-                new { UserId = actorUserId, MemberId = memberId, request.Email },
+                new { UserId = actorUserId, MemberId = memberId },
                 transaction: transaction, cancellationToken: cancellationToken));
             await transaction.CommitAsync(cancellationToken);
             return new MemberManagementResult(memberId, "updated");
@@ -223,4 +230,8 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
             throw;
         }
     }
+
+    private sealed record RawLibrarianMember(
+        long MemberId, long UserId, string Username, string FirstName, string LastName,
+        byte[]? EmailCiphertext, byte[]? ContactInfoCiphertext, string Status);
 }
