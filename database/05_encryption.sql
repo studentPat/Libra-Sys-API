@@ -3,7 +3,7 @@ USE librasys;
 -- Development-only demonstration. Do not put real keys in source control.
 -- This key MUST match Database:EncryptionKey configured in the API's user-secrets.
 -- The key derivation mirrors the C# EncryptionService (SHA256 of domain-prefixed key).
-SET @raw_key              = 'your-secret-key-at-least-32-chars';
+SET @raw_key              = 'LOCAL_DEMO_KEY_REPLACE_ME';
 SET @aes_key              = UNHEX(SHA2(CONCAT('aes:',  @raw_key), 256));
 SET @hmac_key             = UNHEX(SHA2(CONCAT('hmac:', @raw_key), 256));
 

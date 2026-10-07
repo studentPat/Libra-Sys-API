@@ -37,7 +37,7 @@ FROM roles WHERE role_name = 'Member';
 -- The AES key is derived as SHA256("aes:" + key) and HMAC key as SHA256("hmac:" + key),
 -- which mirrors the C# EncryptionService derivation.
 -- Never commit a real key to source control.
-SET @raw_key        = 'your-secret-key-at-least-32-chars';
+SET @raw_key        = 'LOCAL_DEMO_KEY_REPLACE_ME';
 SET @aes_key        = UNHEX(SHA2(CONCAT('aes:', @raw_key), 256));
 SET @hmac_key       = UNHEX(SHA2(CONCAT('hmac:', @raw_key), 256));
 
