@@ -14,6 +14,13 @@ mysql -u YOUR_DBA_USER -p < database\01_schema.sql
 mysql -u YOUR_DBA_USER -p librasys < database\02_seed.sql
 ```
 
+If the database was created before the reservation constraint fix, apply the
+one-time migration before starting the API:
+
+```powershell
+mysql -u YOUR_DBA_USER -p librasys < database\07_reservation_constraint_fix.sql
+```
+
 Before testing sign-in, replace each `REPLACE_WITH_ASPNET_HASH_*` value in
 `database/02_seed.sql` with a locally generated ASP.NET password hash. Do not
 commit the resulting hashes if they reveal your chosen demo passwords. Run the
