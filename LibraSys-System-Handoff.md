@@ -1,8 +1,8 @@
 # LibraSys system handoff
 
-**Handoff date:** 2026-10-07  
+**Handoff date:** 2026-10-08  
 **Repository:** `studentPat/Libra-Sys-API`  
-**Branch at handoff:** `studentpat-create-system-handoff`
+**Branch at handoff:** `main`
 
 ## Canonical project plan
 
@@ -53,7 +53,7 @@ Member-facing queries are scoped to the authenticated member. Borrow, return, an
 
 The repository currently contains focused authentication unit tests in `tests/LibraSys.Api.Tests/AuthServiceTests.cs`, covering valid credentials, invalid credentials, locked accounts, failed-attempt recording, and reset behavior.
 
-The root README describes the database-first phase and identifies the vanilla frontend as a follow-on phase. The API README documents endpoint coverage, local user-secrets configuration, and the database account boundary.
+The root README describes the database-first phase and the API. The vanilla HTML/CSS/JavaScript frontend has been implemented in the `wwwroot` directory. The API README documents endpoint coverage, local user-secrets configuration, and the database account boundary.
 
 ## What is complete relative to the plan
 
@@ -67,19 +67,20 @@ The root README describes the database-first phase and identifies the vanilla fr
 - Reporting and audit-log API surfaces.
 - Basic authentication unit-test coverage.
 - Secret-handling guidance that avoids committing passwords, JWT keys, encryption keys, or connection strings.
+- Vanilla HTML/CSS/JavaScript frontend UI integrated in `wwwroot`.
+- Strict database constraints for unique active reservations.
 
 ## Known gaps and evidence still required
 
 These items are not yet demonstrated as complete in the repository:
 
-1. **Frontend:** No vanilla HTML/CSS/JavaScript frontend is present yet.
-2. **Live database validation:** SQL scripts have not been evidenced against a configured MySQL 8.x instance in this handoff.
-3. **Course evidence:** The required before/after execution plans, timings, rows examined, concurrency observations, rollback results, encryption ciphertext evidence, grant/revoke results, and denied-access results still need to be captured.
-4. **Password seed setup:** `02_seed.sql` intentionally contains placeholder hashes and requires locally generated ASP.NET hashes.
-5. **Production encryption boundary:** `05_encryption.sql` is a teaching demonstration only; key management, rotation, backup encryption, and loss-of-key behavior remain documentation/deployment work.
-6. **API test breadth:** Tests currently focus on authentication. Endpoint authorization, ownership, validation, transaction conflicts, duplicate borrowing/reservations, overpayment, and report behavior need integration or repository-level coverage.
-7. **Recovery behavior:** The scripts cover rollback and locking demonstrations, but bounded idempotent retry behavior and broader restore/recovery evidence still need to be exercised.
-8. **Operational hardening:** Verify configuration validation, production TLS, migration/deployment procedure, error responses, pagination limits, and audit completeness against the paper.
+1. **Live database validation:** SQL scripts have not been evidenced against a configured MySQL 8.x instance in this handoff.
+2. **Course evidence:** The required before/after execution plans, timings, rows examined, concurrency observations, rollback results, encryption ciphertext evidence, grant/revoke results, and denied-access results still need to be captured.
+3. **Password seed setup:** `02_seed.sql` intentionally contains placeholder hashes and requires locally generated ASP.NET hashes.
+4. **Production encryption boundary:** `05_encryption.sql` is a teaching demonstration only; key management, rotation, backup encryption, and loss-of-key behavior remain documentation/deployment work.
+5. **API test breadth:** Tests currently focus on authentication. Endpoint authorization, ownership, validation, transaction conflicts, duplicate borrowing/reservations, overpayment, and report behavior need integration or repository-level coverage.
+6. **Recovery behavior:** The scripts cover rollback and locking demonstrations, but bounded idempotent retry behavior and broader restore/recovery evidence still need to be exercised.
+7. **Operational hardening:** Verify configuration validation, production TLS, migration/deployment procedure, error responses, pagination limits, and audit completeness against the paper.
 
 ## Recommended continuation order
 
@@ -87,9 +88,8 @@ These items are not yet demonstrated as complete in the repository:
 2. Generate local ASP.NET password hashes, seed demo users, configure API user secrets, and verify health, login, catalog, member, and librarian endpoints.
 3. Run each demonstration script and record expected versus observed evidence in the project’s submission artifacts without committing secrets.
 4. Add automated API/integration tests for authorization ownership, validation, duplicate operations, overpayment, transaction conflicts, and report queries.
-5. Build the vanilla frontend for guest, member, librarian, and appropriate DBA-facing workflows, preserving the API’s authorization boundary.
-6. Reconcile README wording with the now-expanded API surface and document the final run/test commands.
-7. Recheck every completion criterion in the canonical paper before preparing the course submission.
+5. Perform end-to-end testing of the recently integrated vanilla frontend against the API workflows, ensuring authorization boundaries hold.
+6. Recheck every completion criterion in the canonical paper before preparing the course submission.
 
 ## Important handoff constraints
 
