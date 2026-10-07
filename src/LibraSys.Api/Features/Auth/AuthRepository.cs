@@ -3,7 +3,7 @@ using LibraSys.Api.Data;
 
 namespace LibraSys.Api.Features.Auth;
 
-public sealed class AuthRepository(IDbConnectionFactory connectionFactory, EncryptionService encryption) : IAuthRepository
+public sealed class AuthRepository(IDbConnectionFactory connectionFactory) : IAuthRepository
 {
     public async Task<RegisteredMember?> RegisterMemberAsync(
         RegisterRequest request, string passwordHash, CancellationToken cancellationToken)
@@ -32,24 +32,12 @@ public sealed class AuthRepository(IDbConnectionFactory connectionFactory, Encry
                 transaction: transaction, cancellationToken: cancellationToken));
 
             const string memberSql = """
-                INSERT INTO members (user_id, first_name, last_name,
-                                     email_ciphertext, email_fingerprint,
-                                     contact_info_ciphertext, member_status)
-                VALUES (@UserId, @FirstName, @LastName,
-                        @EmailCiphertext, @EmailFingerprint,
-                        @ContactInfoCiphertext, 'active');
+                INSERT INTO members (user_id, first_name, last_name, email, contact_info, member_status)
+                VALUES (@UserId, @FirstName, @LastName, @Email, @ContactInfo, 'active');
                 SELECT LAST_INSERT_ID();
                 """;
             var memberId = await connection.QuerySingleAsync<long>(new CommandDefinition(memberSql,
-                new
-                {
-                    UserId = userId,
-                    request.FirstName,
-                    request.LastName,
-                    EmailCiphertext = encryption.Encrypt(request.Email),
-                    EmailFingerprint = encryption.Fingerprint(request.Email),
-                    ContactInfoCiphertext = encryption.Encrypt(request.ContactInfo)
-                },
+                new { UserId = userId, request.FirstName, request.LastName, request.Email, request.ContactInfo },
                 transaction: transaction, cancellationToken: cancellationToken));
 
             const string auditSql = """

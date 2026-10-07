@@ -17,7 +17,6 @@ builder.Services.AddOptions<DatabaseOptions>()
 builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.AddSingleton<IDbConnectionFactory, MySqlConnectionFactory>();
-builder.Services.AddSingleton<EncryptionService>();
 builder.Services.AddScoped<AuthRepository>();
 builder.Services.AddScoped<IAuthRepository>(services =>
     services.GetRequiredService<AuthRepository>());
