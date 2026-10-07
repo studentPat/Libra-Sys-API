@@ -18,9 +18,9 @@ GRANT SELECT, INSERT, UPDATE ON librasys.reservations TO 'librasys_api_role';
 GRANT SELECT, INSERT, UPDATE ON librasys.borrowings TO 'librasys_api_role';
 GRANT SELECT, INSERT, UPDATE ON librasys.fines TO 'librasys_api_role';
 GRANT SELECT, INSERT ON librasys.payments TO 'librasys_api_role';
-GRANT SELECT, UPDATE ON librasys.users TO 'librasys_api_role';
+GRANT SELECT, INSERT, UPDATE ON librasys.users TO 'librasys_api_role';
 GRANT SELECT ON librasys.roles TO 'librasys_api_role';
-GRANT SELECT, UPDATE ON librasys.members TO 'librasys_api_role';
+GRANT SELECT, INSERT, UPDATE ON librasys.members TO 'librasys_api_role';
 GRANT SELECT ON librasys.authors TO 'librasys_api_role';
 GRANT SELECT ON librasys.book_authors TO 'librasys_api_role';
 GRANT SELECT ON librasys.categories TO 'librasys_api_role';
@@ -51,3 +51,4 @@ SHOW GRANTS FOR 'librasys_demo_grantor'@'localhost';
 -- librasys_api, and are intentionally comments so setup remains successful:
 -- CREATE USER 'should_fail'@'localhost' IDENTIFIED BY 'not-used';
 -- GRANT ALL PRIVILEGES ON *.* TO 'librasys_api';
+

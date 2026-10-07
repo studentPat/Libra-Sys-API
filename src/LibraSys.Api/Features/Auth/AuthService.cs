@@ -13,6 +13,14 @@ public sealed class AuthService(
     IOptions<JwtOptions> jwtOptions,
     IPasswordHasher<AuthUser> passwordHasher)
 {
+    public async Task<RegisteredMember?> RegisterAsync(
+        RegisterRequest request, CancellationToken cancellationToken)
+    {
+        var user = new AuthUser { Username = request.Username };
+        var passwordHash = passwordHasher.HashPassword(user, request.Password);
+        return await repository.RegisterMemberAsync(request, passwordHash, cancellationToken);
+    }
+
     public async Task<LoginResponse?> LoginAsync(
         LoginRequest request, CancellationToken cancellationToken)
     {
@@ -83,3 +91,4 @@ public sealed class AuthService(
             user.RoleName);
     }
 }
+

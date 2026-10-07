@@ -4,6 +4,10 @@
 # .NET build output
 **/bin/
 **/obj/
+.tooling-appdata/
+.nuget-packages/
+TestResults/
 
 # Local MySQL/Workbench exports should be reviewed before committing.
 database/*.sql.bak
+

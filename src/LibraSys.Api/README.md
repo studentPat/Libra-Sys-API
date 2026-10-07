@@ -6,6 +6,7 @@ The first ASP.NET 8 backend slice provides:
 - `GET /api/catalog?search=&page=1&pageSize=20`
 - `GET /api/catalog/{bookId}`
 - `POST /api/auth/login`
+- `POST /api/auth/register`
 - `GET /api/auth/me`
 - `GET /api/member/profile`
 - `PUT /api/member/profile`
@@ -40,6 +41,24 @@ The first ASP.NET 8 backend slice provides:
 - `POST /api/librarian/reservations/expire-due`
 - `GET /api/librarian/reservations?status=&page=1&pageSize=20`
 
+## Web application
+
+The API also serves a same-origin vanilla HTML/CSS/JavaScript application from
+`/`. It has role-specific workflows instead of exposing a separate frontend
+server:
+
+- Guests can search the catalog and inspect book details.
+- Guests can register a standard Member account; the password is hashed before
+  the user/member records are written in one transaction.
+- Members can sign in, update their profile, borrow and return copies, manage
+  their own reservations, and view their own borrowing, fine, and payment
+  history.
+- Librarians can create/update books, add/retire copies, manage member
+  profiles/statuses and histories, create fines, record payments, process the
+  reservation lifecycle, and use all operational/audit reports.
+- The DBA view keeps administration separate from library operations and links
+  to the documented local database evidence workflow.
+
 Login failures are tracked per active user. After five failed attempts, the
 account is locked for 15 minutes and successful login resets the counter.
 
@@ -50,6 +69,9 @@ Run the authentication unit tests with:
 ```powershell
 dotnet test tests\LibraSys.Api.Tests\LibraSys.Api.Tests.csproj
 ```
+
+For the complete manual API and browser acceptance pass, see
+[`TESTING.md`](../../TESTING.md).
 
 ## Local configuration
 
@@ -69,6 +91,10 @@ Use the restricted `librasys_api` account from `database/03_security.sql`, not t
 dotnet run --project src\LibraSys.Api
 ```
 
+Open the displayed HTTPS address in a browser. The same application serves the
+vanilla JavaScript frontend at `/` and Swagger at `/swagger` in Development.
+
 The health endpoint works without a database connection. Catalog endpoints require the validated `librasys` database and report a configuration error if no connection string is configured.
 
 The login endpoint verifies ASP.NET password hashes stored in `users.password_hash` and issues a short-lived JWT containing the application role. Do not commit the JWT key or passwords. Member profile, borrowing, reservation, fine, and payment endpoints require a Member JWT and always scope queries to the authenticated user. Borrow, return, and reservation mutations use explicit MySQL transactions and row locks. Members can view financial records but cannot modify fines or payments. Librarians can create fines, record payments, add books, and add physical copies through protected transactional endpoints.
+

@@ -55,6 +55,23 @@ public sealed class AuthServiceTests
         Assert.Equal(0, repository.ResetUserId);
     }
 
+    [Fact]
+    public async Task RegisterAsync_HashesPasswordBeforePersistingMember()
+    {
+        var repository = new FakeAuthRepository(UserWithPassword(failedLoginCount: 0));
+        var service = CreateService(repository);
+        var request = new RegisterRequest(
+            "new_member", "a-password-with-at-least-12-chars", "New", "Member",
+            "new.member@example.test", null);
+
+        var result = await service.RegisterAsync(request, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("new_member", result.Username);
+        Assert.NotEqual(request.Password, repository.RegisteredPasswordHash);
+        Assert.NotNull(repository.RegisteredRequest);
+    }
+
     private static AuthService CreateService(FakeAuthRepository repository)
     {
         var options = Options.Create(new JwtOptions
@@ -107,5 +124,17 @@ public sealed class AuthServiceTests
             ResetUserId = userId;
             return Task.CompletedTask;
         }
+
+        public RegisterRequest? RegisteredRequest { get; private set; }
+        public string? RegisteredPasswordHash { get; private set; }
+
+        public Task<RegisteredMember?> RegisterMemberAsync(
+            RegisterRequest request, string passwordHash, CancellationToken cancellationToken)
+        {
+            RegisteredRequest = request;
+            RegisteredPasswordHash = passwordHash;
+            return Task.FromResult<RegisteredMember?>(new RegisteredMember(99, request.Username));
+        }
     }
 }
+

@@ -5,6 +5,59 @@ namespace LibraSys.Api.Features.Auth;
 
 public sealed class AuthRepository(IDbConnectionFactory connectionFactory) : IAuthRepository
 {
+    public async Task<RegisteredMember?> RegisterMemberAsync(
+        RegisterRequest request, string passwordHash, CancellationToken cancellationToken)
+    {
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            const string roleSql = "SELECT role_id FROM roles WHERE role_name = 'Member';";
+            var roleId = await connection.QuerySingleOrDefaultAsync<long?>(
+                new CommandDefinition(roleSql, transaction: transaction, cancellationToken: cancellationToken));
+            if (roleId is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            const string userSql = """
+                INSERT INTO users (role_id, username, password_hash, status)
+                VALUES (@RoleId, @Username, @PasswordHash, 'active');
+                SELECT LAST_INSERT_ID();
+                """;
+            var userId = await connection.QuerySingleAsync<long>(new CommandDefinition(userSql,
+                new { RoleId = roleId.Value, request.Username, PasswordHash = passwordHash },
+                transaction: transaction, cancellationToken: cancellationToken));
+
+            const string memberSql = """
+                INSERT INTO members (user_id, first_name, last_name, email, contact_info, member_status)
+                VALUES (@UserId, @FirstName, @LastName, @Email, @ContactInfo, 'active');
+                SELECT LAST_INSERT_ID();
+                """;
+            var memberId = await connection.QuerySingleAsync<long>(new CommandDefinition(memberSql,
+                new { UserId = userId, request.FirstName, request.LastName, request.Email, request.ContactInfo },
+                transaction: transaction, cancellationToken: cancellationToken));
+
+            const string auditSql = """
+                INSERT INTO transaction_logs (user_id, action, entity_type, entity_id, details)
+                VALUES (@UserId, 'register_member', 'member', @MemberId,
+                        JSON_OBJECT('username', @Username));
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(auditSql,
+                new { UserId = userId, MemberId = memberId, request.Username },
+                transaction: transaction, cancellationToken: cancellationToken));
+            await transaction.CommitAsync(cancellationToken);
+            return new RegisteredMember(memberId, request.Username);
+        }
+        catch (MySqlConnector.MySqlException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
     public async Task<AuthUser?> FindActiveUserAsync(
         string username, CancellationToken cancellationToken)
     {
@@ -66,3 +119,4 @@ public sealed class AuthRepository(IDbConnectionFactory connectionFactory) : IAu
             new { UserId = userId }, cancellationToken: cancellationToken));
     }
 }
+
