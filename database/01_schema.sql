@@ -137,7 +137,13 @@ CREATE TABLE reservations (
     cancelled_at DATETIME NULL,
     CONSTRAINT fk_reservations_member FOREIGN KEY (member_id) REFERENCES members(member_id),
     CONSTRAINT fk_reservations_book FOREIGN KEY (book_id) REFERENCES books(book_id),
-    CONSTRAINT uq_active_reservation UNIQUE (member_id, book_id, status),
+    active_reservation_key VARCHAR(80)
+        GENERATED ALWAYS AS (
+            IF(status IN ('queued', 'ready'),
+               CONCAT(member_id, ':', book_id),
+               NULL)
+        ) STORED,
+    UNIQUE KEY uq_active_reservation (active_reservation_key),
     INDEX ix_reservations_queue (book_id, status, reserved_at)
 ) ENGINE = InnoDB;
 

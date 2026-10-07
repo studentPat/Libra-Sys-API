@@ -171,6 +171,12 @@ public sealed class ReservationManagementRepository(IDbConnectionFactory connect
         {
             throw;
         }
+        catch (MySqlException ex) when (ex.Number == 1062)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw new ReservationManagementConflictException(
+                "The member already has an active reservation for this book.");
+        }
         catch (MySqlException)
         {
             await transaction.RollbackAsync(CancellationToken.None);
