@@ -26,7 +26,7 @@ SET @new_email   = 'updated.demo@example.invalid';
 SET @new_contact = 'Updated contact info';
 UPDATE members
 SET email_ciphertext       = AES_ENCRYPT(@new_email,   @aes_key),
-    email_fingerprint      = UNHEX(SHA2(LOWER(TRIM(@new_email)), 256)),
+    email_fingerprint      = SHA2(LOWER(TRIM(@new_email)), 256),
     contact_info_ciphertext = AES_ENCRYPT(@new_contact, @aes_key)
 WHERE member_id = @member_id;
 

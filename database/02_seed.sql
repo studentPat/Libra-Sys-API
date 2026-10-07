@@ -50,7 +50,7 @@ INSERT INTO members (user_id, first_name, last_name,
 SELECT user_id,
        'Demo', 'Member',
        AES_ENCRYPT(@demo_email,   @aes_key),
-       UNHEX(SHA2(LOWER(TRIM(@demo_email)), 256)),
+       SHA2(LOWER(TRIM(@demo_email)), 256),
        AES_ENCRYPT(@demo_contact, @aes_key)
 FROM users WHERE username = 'demo_member';
 
