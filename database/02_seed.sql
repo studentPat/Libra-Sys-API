@@ -25,11 +25,11 @@ WHERE (r.role_name = 'Guest' AND p.permission_name = 'catalog.read')
 -- These are placeholders, not usable credentials. Replace with ASP.NET-generated
 -- password hashes during local setup; never store plaintext passwords in SQL.
 INSERT INTO users (role_id, username, password_hash)
-SELECT role_id, 'demo_librarian', '$DEMO_HASH_REPLACE_IN_LOCAL_SETUP'
+SELECT role_id, 'demo_librarian', 'AQAAAAIAAYagAAAAENrd8dqunmsoTr+cBD6Nze40Rx3Hq7d4sD/P4cQuP2CdWJ2MnLL4VbJxk8Pk1kpikA=='
 FROM roles WHERE role_name = 'Librarian';
 
 INSERT INTO users (role_id, username, password_hash)
-SELECT role_id, 'demo_member', '$DEMO_HASH_REPLACE_IN_LOCAL_SETUP'
+SELECT role_id, 'demo_member', 'AQAAAAIAAYagAAAAEKTwOCBTgtNuwx5YI1IDOlDgUIFV0QjxYpeEBcbg2iSK9NRJTBZCJwR1C0hchkTWHw=='
 FROM roles WHERE role_name = 'Member';
 
 INSERT INTO members (user_id, first_name, last_name, email, contact_info)
