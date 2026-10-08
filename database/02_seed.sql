@@ -32,8 +32,8 @@ INSERT INTO users (role_id, username, password_hash)
 SELECT role_id, 'demo_member', 'AQAAAAIAAYagAAAAEKTwOCBTgtNuwx5YI1IDOlDgUIFV0QjxYpeEBcbg2iSK9NRJTBZCJwR1C0hchkTWHw=='
 FROM roles WHERE role_name = 'Member';
 
-INSERT INTO members (user_id, first_name, last_name, email, contact_info)
-SELECT user_id, 'Demo', 'Member', 'demo.member@example.invalid', 'not-a-real-contact'
+INSERT INTO members (user_id, first_name, last_name, email, contact_info_ciphertext)
+SELECT user_id, 'Demo', 'Member', 'demo.member@example.invalid', AES_ENCRYPT('not-a-real-contact', UNHEX(SHA2('your-secret-key-at-least-32-chars', 256)))
 FROM users WHERE username = 'demo_member';
 
 INSERT INTO authors (name) VALUES

@@ -1,10 +1,14 @@
 using Dapper;
+using LibraSys.Api.Configuration;
 using LibraSys.Api.Data;
+using Microsoft.Extensions.Options;
 
 namespace LibraSys.Api.Features.Auth;
 
-public sealed class AuthRepository(IDbConnectionFactory connectionFactory) : IAuthRepository
+public sealed class AuthRepository(IDbConnectionFactory connectionFactory, IOptions<DatabaseOptions> options) : IAuthRepository
 {
+    private readonly string _encryptionKey = options.Value.EncryptionKey;
+
     public async Task<RegisteredMember?> RegisterMemberAsync(
         RegisterRequest request, string passwordHash, CancellationToken cancellationToken)
     {
@@ -32,12 +36,12 @@ public sealed class AuthRepository(IDbConnectionFactory connectionFactory) : IAu
                 transaction: transaction, cancellationToken: cancellationToken));
 
             const string memberSql = """
-                INSERT INTO members (user_id, first_name, last_name, email, contact_info, member_status)
-                VALUES (@UserId, @FirstName, @LastName, @Email, @ContactInfo, 'active');
+                INSERT INTO members (user_id, first_name, last_name, email, contact_info_ciphertext, member_status)
+                VALUES (@UserId, @FirstName, @LastName, @Email, AES_ENCRYPT(@ContactInfo, UNHEX(SHA2(@EncryptionKey, 256))), 'active');
                 SELECT LAST_INSERT_ID();
                 """;
             var memberId = await connection.QuerySingleAsync<long>(new CommandDefinition(memberSql,
-                new { UserId = userId, request.FirstName, request.LastName, request.Email, request.ContactInfo },
+                new { UserId = userId, request.FirstName, request.LastName, request.Email, request.ContactInfo, EncryptionKey = _encryptionKey },
                 transaction: transaction, cancellationToken: cancellationToken));
 
             const string auditSql = """

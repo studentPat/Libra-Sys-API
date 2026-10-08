@@ -35,7 +35,7 @@ erDiagram
         bigint member_id PK
         bigint user_id FK,UK
         varchar email UK
-        varbinary address_ciphertext
+        varbinary contact_info_ciphertext
     }
     books {
         bigint book_id PK
