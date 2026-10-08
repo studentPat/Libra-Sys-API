@@ -1,11 +1,14 @@
 using Dapper;
+using LibraSys.Api.Configuration;
 using LibraSys.Api.Data;
+using Microsoft.Extensions.Options;
 using MySqlConnector;
 
 namespace LibraSys.Api.Features.Librarian;
 
-public sealed class MemberManagementRepository(IDbConnectionFactory connectionFactory)
+public sealed class MemberManagementRepository(IDbConnectionFactory connectionFactory, IOptions<DatabaseOptions> options)
 {
+    private readonly string _encryptionKey = options.Value.EncryptionKey;
     public async Task<IReadOnlyList<LibrarianMemberFine>> GetFinesAsync(
         long memberId, CancellationToken cancellationToken)
     {
@@ -101,7 +104,7 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
                    m.first_name AS FirstName,
                    m.last_name AS LastName,
                    m.email AS Email,
-                   m.contact_info AS ContactInfo,
+                   CAST(AES_DECRYPT(m.contact_info_ciphertext, UNHEX(SHA2(@EncryptionKey, 256))) AS CHAR) AS ContactInfo,
                    m.member_status AS Status
             FROM members m
             INNER JOIN users u ON u.user_id = m.user_id
@@ -123,7 +126,8 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
                 Search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
                 Status = string.IsNullOrWhiteSpace(status) ? null : status,
                 PageSize = pageSize,
-                Offset = (page - 1) * pageSize
+                Offset = (page - 1) * pageSize,
+                EncryptionKey = _encryptionKey
             },
             cancellationToken: cancellationToken));
         return rows.AsList();
@@ -186,7 +190,7 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
                 SET first_name = @FirstName,
                     last_name = @LastName,
                     email = @Email,
-                    contact_info = @ContactInfo
+                    contact_info_ciphertext = AES_ENCRYPT(@ContactInfo, UNHEX(SHA2(@EncryptionKey, 256)))
                 WHERE member_id = @MemberId;
                 """;
             var affected = await connection.ExecuteAsync(new CommandDefinition(updateSql,
@@ -196,7 +200,8 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
                     request.FirstName,
                     request.LastName,
                     request.Email,
-                    request.ContactInfo
+                    request.ContactInfo,
+                    EncryptionKey = _encryptionKey
                 },
                 transaction: transaction, cancellationToken: cancellationToken));
             if (affected == 0)

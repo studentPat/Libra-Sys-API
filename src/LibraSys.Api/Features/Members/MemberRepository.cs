@@ -1,11 +1,15 @@
 using Dapper;
+using LibraSys.Api.Configuration;
 using LibraSys.Api.Data;
+using Microsoft.Extensions.Options;
 using MySqlConnector;
 
 namespace LibraSys.Api.Features.Members;
 
-public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
+public sealed class MemberRepository(IDbConnectionFactory connectionFactory, IOptions<DatabaseOptions> options)
 {
+    private readonly string _encryptionKey = options.Value.EncryptionKey;
+
     public async Task<MemberProfile?> GetProfileAsync(
         long userId, CancellationToken cancellationToken)
     {
@@ -15,7 +19,7 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
                    m.first_name AS FirstName,
                    m.last_name AS LastName,
                    m.email AS Email,
-                   m.contact_info AS ContactInfo,
+                   CAST(AES_DECRYPT(m.contact_info_ciphertext, UNHEX(SHA2(@EncryptionKey, 256))) AS CHAR) AS ContactInfo,
                    m.member_status AS Status
             FROM members m
             INNER JOIN users u ON u.user_id = m.user_id
@@ -25,7 +29,7 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
         await using var connection = connectionFactory.CreateConnection();
         await connection.OpenAsync(cancellationToken);
         return await connection.QuerySingleOrDefaultAsync<MemberProfile>(
-            new CommandDefinition(sql, new { UserId = userId },
+            new CommandDefinition(sql, new { UserId = userId, EncryptionKey = _encryptionKey },
                 cancellationToken: cancellationToken));
     }
 
@@ -66,7 +70,7 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
             SET first_name = @FirstName,
                 last_name = @LastName,
                 email = @Email,
-                contact_info = @ContactInfo
+                contact_info_ciphertext = AES_ENCRYPT(@ContactInfo, UNHEX(SHA2(@EncryptionKey, 256)))
             WHERE user_id = @UserId
               AND member_status <> 'closed';
             """;
@@ -81,7 +85,8 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
                 request.FirstName,
                 request.LastName,
                 request.Email,
-                request.ContactInfo
+                request.ContactInfo,
+                EncryptionKey = _encryptionKey
             },
             cancellationToken: cancellationToken));
         return affected > 0;

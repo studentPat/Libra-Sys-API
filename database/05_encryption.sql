@@ -1,15 +1,15 @@
 USE librasys;
 
 -- Development-only demonstration. Do not put real keys in source control.
-SET @demo_key = UNHEX(SHA2('LOCAL_DEMO_KEY_REPLACE_ME', 256));
+SET @demo_key = UNHEX(SHA2('your-secret-key-at-least-32-chars', 256));
 SET @member_id = (SELECT member_id FROM members ORDER BY member_id LIMIT 1);
 
 UPDATE members
-SET address_ciphertext = AES_ENCRYPT('Demo address; replace locally', @demo_key)
+SET contact_info_ciphertext = AES_ENCRYPT('Demo contact; replace locally', @demo_key)
 WHERE member_id = @member_id;
 
-SELECT member_id, address_ciphertext,
-       CAST(AES_DECRYPT(address_ciphertext, @demo_key) AS CHAR) AS decrypted_value
+SELECT member_id, contact_info_ciphertext,
+       CAST(AES_DECRYPT(contact_info_ciphertext, @demo_key) AS CHAR) AS decrypted_value
 FROM members
 WHERE member_id = @member_id;
 
