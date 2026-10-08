@@ -24,7 +24,7 @@ The project demonstrates these topics with executable SQL, controlled test cases
 ### Included
 
 - Public catalog search and book details
-- Member accounts and profile management
+- Member registration, accounts, and profile management
 - Book and copy management
 - Borrowing, returning, and reservation workflows
 - Overdue, lost, and damaged-book fines
@@ -50,7 +50,7 @@ Application roles are **Guest**, **Member**, **Librarian**, and **DBA**. Applica
 
 | Actor | Application access |
 |---|---|
-| Guest | Search and view public catalog information |
+| Guest | Search and view public catalog information, and register as a member |
 | Member | Manage own profile, borrow/return where permitted, reserve books, view own history and fines |
 | Librarian | Manage books, copies, members, loans, reservations, fines, payments, and reports |
 | DBA | Database administration and security configuration; not an ordinary library operator |
@@ -61,17 +61,19 @@ The API does not connect as a different MySQL account for every member. It uses 
 
 The ERD should use consistent lowercase `snake_case` names and show all cardinalities and foreign keys. The principal tables are:
 
-- `roles(role_id, role_name)`
-- `permissions(permission_id, permission_name)`
+- `roles(role_id, role_name, created_at)`
+- `permissions(permission_id, permission_name, created_at)`
 - `role_permissions(role_id, permission_id)`
-- `users(user_id, role_id, username, password_hash, status, created_at, updated_at)`
-- `members(member_id, user_id, first_name, last_name, email, contact_info, address_ciphertext, created_at, updated_at)`
+- `users(user_id, role_id, username, password_hash, status, failed_login_count, locked_until, password_changed_at, created_at, updated_at)`
+- `members(member_id, user_id, first_name, last_name, email, contact_info, contact_info_ciphertext, member_status, created_at, updated_at)`
 - `books(book_id, isbn, title, publisher, publication_year, created_at, updated_at)`
 - `authors(author_id, name)`
 - `book_authors(book_id, author_id)`
-- `book_copies(copy_id, book_id, accession_number, status, condition, created_at, updated_at)`
-- `reservations(reservation_id, member_id, book_id, reserved_at, expires_at, status, fulfilled_at, cancelled_at)`
-- `borrowings(borrowing_id, copy_id, member_id, borrow_date, due_date, return_date, status, return_condition)`
+- `categories(category_id, category_name)`
+- `book_categories(book_id, category_id)`
+- `book_copies(copy_id, book_id, accession_number, status, item_condition, created_at, updated_at)`
+- `reservations(reservation_id, member_id, book_id, reserved_at, expires_at, status, fulfilled_at, cancelled_at, active_reservation_key)`
+- `borrowings(borrowing_id, copy_id, member_id, borrow_date, due_date, return_date, status, return_condition, active_copy_id, created_at, updated_at)`
 - `fines(fine_id, borrowing_id, amount, reason, status, created_at, settled_at, waived_at, waived_by)`
 - `payments(payment_id, fine_id, amount_paid, payment_date, payment_method, receipt_reference, recorded_by)`
 - `transaction_logs(transaction_id, user_id, action, entity_type, entity_id, event_time, success, details)`
@@ -84,11 +86,11 @@ Important constraints:
 - Status values are restricted by documented lookup values or MySQL `CHECK` constraints.
 - Passwords are never stored; only a password hash is stored.
 - A copy cannot have more than one active borrowing.
-- A member cannot have duplicate active reservations for the same book.
+- A member cannot have duplicate queued or ready reservations for the same book.
 - A fine can have multiple payments, but the total paid cannot exceed the fine amount.
 - `borrowings` is the consistent name; the draft name `borrowBook` is removed.
 
-Multiple authors are supported through `authors` and `book_authors` instead of a single free-form author column. If categories are required for the UI, add `categories` and `book_categories` using the same many-to-many pattern.
+Multiple authors are supported through `authors` and `book_authors` instead of a single free-form author column. Categories are similarly supported through `categories` and `book_categories` using the same many-to-many pattern.
 
 ## 5. Transaction management and recovery
 
@@ -193,7 +195,8 @@ Representative queries are defined before tuning:
 
 Initial indexes include primary keys, unique keys, foreign-key columns, and workload indexes such as:
 
-- `books(title, isbn)`
+- `members(last_name, first_name)`
+- `books(title)` and `ftx_books_title (title)` full-text index
 - `book_copies(book_id, status)`
 - `reservations(book_id, status, reserved_at)`
 - `borrowings(member_id, status)`
@@ -202,6 +205,7 @@ Initial indexes include primary keys, unique keys, foreign-key columns, and work
 - `fines(status, created_at)`
 - `payments(fine_id, payment_date)`
 - `transaction_logs(user_id, event_time)`
+- `transaction_logs(entity_type, entity_id, event_time)`
 
 The project demonstrates query optimization using:
 
@@ -219,7 +223,8 @@ The API exposes authenticated endpoints for members and librarians and public re
 
 Required workflow endpoints include:
 
-- Catalog search and book details
+- Public catalog search and book details
+- User login and member registration
 - Member profile and own history
 - Librarian book/copy/member management
 - Borrow, return, and reserve
